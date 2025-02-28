@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Minimal GPT Chat</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    #chat-container {
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    #chat-logs {
+      border: 1px solid #ccc;
+      padding: 10px;
+      min-height: 300px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .message {
+      margin-bottom: 8px;
+    }
+    .user {
+      color: blue;
+      font-weight: bold;
+    }
+    .assistant {
+      color: green;
+      font-weight: bold;
+    }
+    #input-container {
+      display: flex;
+      gap: 10px;
+    }
+    #user-input {
+      flex: 1;
+      padding: 8px;
+    }
+    #send-btn {
+      padding: 8px 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Minimal GPT Chat</h1>
+  <div id="chat-container">
+    <div id="chat-logs"></div>
+    <div id="input-container">
+      <input type="text" id="user-input" placeholder="Ask something..." />
+      <button id="send-btn">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const chatLogs = document.getElementById('chat-logs');
+    const userInput = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+
+    // Cloudflare Worker의 프로덕션 URL
+    // 예: https://your-worker.subdomain.workers.dev
+    const WORKER_URL = "https://your-worker-unique-id.workers.dev";
+
+    sendBtn.addEventListener('click', sendMessage);
+    userInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+
+    function appendMessage(sender, text) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'message';
+      msgDiv.innerHTML = `<span class="${sender}">${sender}:</span> ${text}`;
+      chatLogs.appendChild(msgDiv);
+      chatLogs.scrollTop = chatLogs.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const message = userInput.value.trim();
+      if (!message) return;
+
+      appendMessage('user', message);
+      userInput.value = '';
+
+      try {
+        const response = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userMessage: message })
+        });
+        if (!response.ok) {
+          throw new Error(`Server Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        // data.reply: Cloudflare Worker에서 보낸 답변
+        appendMessage('assistant', data.reply);
+      } catch (err) {
+        console.error(err);
+        appendMessage('assistant', "Error: " + err.message);
+      }
+    }
+  </script>
+</body>
+</html>
