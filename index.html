@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>영어 어원 박사 챗봇</title>
   <style>
+    /* 페이지 전체 스타일 */
     body {
       font-family: 'Arial', sans-serif;
       background: url('img1.jpg') no-repeat center center fixed;
@@ -15,6 +16,7 @@
       align-items: center;
       height: 100vh;
     }
+    /* 챗봇 컨테이너 스타일 */
     .container {
       max-width: 600px;
       width: 90%;
@@ -24,6 +26,7 @@
       overflow: hidden;
       padding: 20px;
     }
+    /* 헤더 영역 스타일 */
     .header {
       background-color: #ffcc00;
       color: white;
@@ -33,6 +36,7 @@
       font-weight: bold;
       border-radius: 12px 12px 0 0;
     }
+    /* 채팅 영역 컨테이너 스타일 */
     .chat-container {
       height: 400px;
       overflow-y: auto;
@@ -44,6 +48,7 @@
       display: flex;
       flex-direction: column;
     }
+    /* 개별 메시지 스타일 */
     .chat-message {
       display: flex;
       align-items: center;
@@ -52,28 +57,33 @@
       border-radius: 8px;
       max-width: 80%;
     }
+    /* 챗봇 메시지 (왼쪽 정렬) */
     .bot-message {
       background-color: #ffeb99;
       align-self: flex-start;
       text-align: left;
       flex-direction: row;
     }
+    /* 유저 메시지 (오른쪽 정렬) */
     .user-message {
       background-color: #d1e7dd;
       text-align: right;
       align-self: flex-end;
       flex-direction: row-reverse;
     }
+    /* 프로필 이미지 */
     .profile-img {
       width: 40px;
       height: 40px;
       border-radius: 50%;
       margin-right: 10px;
     }
+    /* 유저 메시지에서 이미지 위치 조정 */
     .user-message .profile-img {
       margin-left: 10px;
       margin-right: 0;
     }
+    /* 입력창, 버튼 컨테이너 */
     .input-container {
       display: flex;
       gap: 10px;
@@ -100,14 +110,20 @@
   </style>
 </head>
 <body>
+  <!-- 메인 챗봇 컨테이너 -->
   <div class="container">
     <div class="header">🐣 영단어 어원박사 🐣</div>
+    
+    <!-- 채팅 메시지 표시 영역 -->
     <div class="chat-container" id="chat-container">
+      <!-- 초기 챗봇 메시지 -->
       <div class="chat-message bot-message">
         <img src="puki.png" class="profile-img" alt="챗봇">
         <p>안녕! 궁금한 영어 단어를 입력해 줘! ✨</p>
       </div>
     </div>
+
+    <!-- 사용자 입력 영역 -->
     <div class="input-container">
       <input type="text" id="user-input" placeholder="예: example" onkeypress="handleKeyPress(event)">
       <button id="send-button" onclick="sendMessage()">보내기</button>
@@ -115,18 +131,20 @@
   </div>
 
   <script>
-    // 1) Cloudflare Worker URL (API 엔드포인트)
-    //    실제 배포 주소를 넣으세요. 예: "https://my-worker.user.workers.dev"
+    // 1) Cloudflare Worker URL (채팅 API 엔드포인트)
+    //    예: "https://my-chat-worker.user.workers.dev/chat"
     const WORKER_URL = "https://my-worker.sehyunglee2015.workers.dev";
 
-    // 엔터키 이벤트
+    // 엔터키 입력 시 메시지 전송
     function handleKeyPress(event) {
       if (event.key === "Enter") {
         sendMessage();
       }
     }
 
-    // 채팅 영역에 메시지 추가
+    // 채팅창에 메시지를 추가
+    // sender: 'user' or 'bot'
+    // text: 출력할 메시지
     function appendMessage(sender, text) {
       const container = document.getElementById('chat-container');
       const messageDiv = document.createElement('div');
@@ -145,33 +163,23 @@
       container.scrollTop = container.scrollHeight;
     }
 
-    // 메시지 전송 -> Worker -> OpenAI
+    // 메시지 전송 함수: Cloudflare Worker에 POST 요청
     async function sendMessage() {
       const inputField = document.getElementById('user-input');
       const message = inputField.value.trim();
       if (!message) return;
 
-      // 사용자 메시지 출력
+      // 사용자 메시지 표시
       appendMessage('user', message);
       inputField.value = '';
 
       try {
-        // Worker에 POST 요청
+        // Worker로 POST 요청
         const response = await fetch(WORKER_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              {
-                role: "system",
-                content: "당신은 초등학생도 쉽게 이해할 수 있도록 영어 단어와 어원을 친절하게 설명하는 AI 튜터입니다. 사용자가 입력한 단어의 뜻과 어원을 알려주고, 이해를 돕기 위한 간단한 예문도 하나 알려주세요."
-              },
-              {
-                role: "user",
-                content: message
-              }
-            ]
+            userMessage: message
           })
         });
 
@@ -180,10 +188,8 @@
         }
 
         const data = await response.json();
-        // OpenAI 응답에서 챗봇 메시지 추출
-        const assistantReply = data.choices?.[0]?.message?.content || "답변을 받아오지 못했어요.";
-        appendMessage('bot', assistantReply);
-
+        // data.reply: Worker에서 반환된 텍스트
+        appendMessage('bot', data.reply || "답변을 받아오지 못했어요.");
       } catch (err) {
         console.error(err);
         appendMessage('bot', "⚠️ 서버 오류가 발생했어요.");
